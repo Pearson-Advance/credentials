@@ -88,7 +88,7 @@ class BadgeTemplate(AbstractCredential):
     uuid = models.UUIDField(unique=True, default=uuid.uuid4, help_text=_("Unique badge template ID."))
     name = models.CharField(max_length=255, help_text=_("Badge template name."))
     description = models.TextField(null=True, blank=True, help_text=_("Badge template description."))
-    icon = models.ImageField(upload_to="badge_templates/icons", null=True, blank=True)
+    icon = models.ImageField(upload_to="badge_templates/icons", null=True, blank=True, max_length=255)
     origin = models.CharField(max_length=128, null=True, blank=True, help_text=_("Badge template type."))
     state = StatusField(
         choices_name="STATES",
