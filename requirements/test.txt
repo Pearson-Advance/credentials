@@ -200,7 +200,7 @@ edx-django-utils==5.1.0
     #   openedx-events
 edx-drf-extensions==8.3.1
     # via -r requirements/base.txt
-edx-event-bus-redis @ git+https://github.com/openedx/event-bus-redis.git@v0.4.0
+edx-event-bus-redis @ git+https://github.com/Pearson-Advance/event-bus-redis.git@v0.5.0.post1
     # via -r requirements/base.txt
 edx-i18n-tools==0.9.1
     # via
