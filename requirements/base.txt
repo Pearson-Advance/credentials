@@ -407,6 +407,7 @@ typing-extensions==4.15.0
     #   anyio
     #   edx-opaque-keys
     #   grpcio
+tzdata==2025.2
 uritemplate==4.2.0
     # via
     #   coreapi
