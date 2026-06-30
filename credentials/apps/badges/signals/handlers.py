@@ -51,7 +51,7 @@ def handle_requirement_fulfilled(sender, username, **kwargs):
     """
     On user's Badge progression (completion).
     """
-    BadgeProgress.for_user(username=username, template_id=sender.template.id).progress()
+    BadgeProgress.for_user(username=username, template_id=sender.template.id, create_if_absent=True).progress()
 
 
 @receiver(BADGE_REQUIREMENT_REGRESSED)
@@ -59,7 +59,7 @@ def handle_requirement_regressed(sender, username, **kwargs):
     """
     On user's Badge regression (incompletion).
     """
-    BadgeProgress.for_user(username=username, template_id=sender.template.id).regress()
+    BadgeProgress.for_user(username=username, template_id=sender.template.id, create_if_absent=True).regress()
 
 
 @receiver(BADGE_PROGRESS_COMPLETE)
