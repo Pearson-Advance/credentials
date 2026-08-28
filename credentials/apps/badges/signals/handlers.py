@@ -81,7 +81,11 @@ def handle_badge_completion(sender, username, badge_template_id, origin, **kwarg
     logger.debug("BADGES: progress is complete for %s on the %s", username, badge_template_id)
 
     if origin == CredlyBadgeTemplate.ORIGIN:
-        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
+        context = kwargs.get('context', {})
+        issue_credly_badges_str = context.get('issue_credly_badges', 'true').lower()       
+        issue_credly_badges = issue_credly_badges_str == 'true'
+
+        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id, issue_credly_badges=issue_credly_badges)
     elif origin == AccredibleGroup.ORIGIN:
         AccredibleBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
 
