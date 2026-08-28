@@ -5,8 +5,11 @@ See:
 """
 
 import logging
+import requests
 
 from django.dispatch import receiver
+from django.conf import settings
+from credentials.apps.core.oauth2_utils import get_oauth2_headers
 from openedx_events.tooling import OpenEdxPublicSignal, load_all_signals
 
 from credentials.apps.badges.issuers import AccredibleBadgeTemplateIssuer, CredlyBadgeTemplateIssuer
@@ -81,6 +84,76 @@ def handle_badge_completion(sender, username, badge_template_id, origin, **kwarg
     logger.debug("BADGES: progress is complete for %s on the %s", username, badge_template_id)
 
     if origin == CredlyBadgeTemplate.ORIGIN:
+        # Check badge issuance restrictions from external API.
+        # This mechanism evaluates whether a badge should be issued based on
+        # restrictions defined by an external service. It queries an API endpoint
+        # for each course fulfillment to determine if badge issuance is allowed.
+        # If any course restricts badge issuance, the badge will not be issued.
+        # This feature is disabled by default
+        if getattr(settings, 'BADGES_ENABLE_ISSUANCE_RESTRICTIONS', False):
+            progress = BadgeProgress.for_user(username=username, template_id=badge_template_id)
+            
+            if progress:
+                fulfillments = progress.fulfillment_set.all()
+                
+                if fulfillments:
+                    allow_issuance = True
+
+                    headers = get_oauth2_headers()
+                    
+                    for fulfillment in fulfillments:
+                        if not fulfillment.course_key:
+                            continue
+                        
+                        try:
+                            course_key_str = str(fulfillment.course_key)
+                            response = requests.get(
+                                getattr(settings, 'BADGES_ISSUANCE_RESTRICTIONS_API_URL', ''),
+                                params={'ccx_id': course_key_str},
+                                headers=headers,
+                                timeout=5
+                            )
+                            
+                            if response.status_code == 200:
+                                data = response.json()
+                                results = data.get('results', [])
+
+                                matched_result = None
+
+                                for result in results:
+                                    if result.get('ccx_id') == course_key_str:
+                                        matched_result = result
+                                        break
+
+                                if matched_result:
+                                    allow_badges = matched_result.get(
+                                        getattr(settings, 'BADGES_ISSUANCE_RESTRICTIONS_FLAG_NAME', ''),
+                                        True
+                                    )
+                                    
+                                    if not allow_badges:
+                                        logger.info(
+                                            f"Badge issuance blocked for {username} in course {course_key_str}"
+                                        )
+                                        allow_issuance = False
+                                        break
+                                else:
+                                    logger.warning(
+                                        f"No restriction data found for course {course_key_str}, "
+                                        f"allowing badge by default"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"Restrictions API error for course {course_key_str}: "
+                                    f"status {response.status_code}"
+                                )
+                        
+                        except Exception as e:
+                            logger.error(f"Restrictions check error for course {course_key_str}: {e}")
+                    
+                    if not allow_issuance:
+                        return
+        
         CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
     elif origin == AccredibleGroup.ORIGIN:
         AccredibleBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
