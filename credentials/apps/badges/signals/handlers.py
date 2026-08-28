@@ -7,6 +7,7 @@ See:
 import logging
 
 from django.dispatch import receiver
+from credentials.apps.badges.processing.restrictions import is_badge_issuance_allowed
 from openedx_events.tooling import OpenEdxPublicSignal, load_all_signals
 
 from credentials.apps.badges.issuers import AccredibleBadgeTemplateIssuer, CredlyBadgeTemplateIssuer
@@ -81,6 +82,15 @@ def handle_badge_completion(sender, username, badge_template_id, origin, **kwarg
     logger.debug("BADGES: progress is complete for %s on the %s", username, badge_template_id)
 
     if origin == CredlyBadgeTemplate.ORIGIN:
+        progress = BadgeProgress.for_user(username=username, template_id=badge_template_id)
+
+        if not is_badge_issuance_allowed(
+            username=username,
+            badge_template_id=badge_template_id,
+            progress=progress,
+        ):
+            return
+
         CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
     elif origin == AccredibleGroup.ORIGIN:
         AccredibleBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
