@@ -19,6 +19,8 @@ from credentials.apps.badges.signals import (
     BADGE_REQUIREMENT_REGRESSED,
 )
 from credentials.apps.badges.utils import get_badging_event_types
+from openedx_filters.tooling import OpenEdxPublicFilter
+from openedx_filters.exceptions import OpenEdxFilterException
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,41 @@ def handle_requirement_regressed(sender, username, **kwargs):
     BadgeProgress.for_user(username=username, template_id=sender.template.id, create_if_absent=True).regress()
 
 
+class PreBadgeIssuanceFilter(OpenEdxPublicFilter):
+    """
+    Filter used to determine if a badge should be issued.
+    
+    Purpose:
+        Triggered before issuing a Credly badge, allows plugins to intercept
+        and determine whether the badge should be issued based on custom logic.
+    
+    Filter Type:
+        org.openedx.learning.badges.pre_badge_issuance.v1
+    """
+    
+    filter_type = "org.openedx.learning.badges.pre_badge_issuance.v1"
+    
+    @classmethod
+    def run_filter(cls, username, badge_template_id, course_key, **kwargs):
+        """
+        Process badge issuance decision through the pipeline.
+        
+        Arguments:
+            username (str): Username of the user
+            badge_template_id (str): ID of the badge template
+            course_key (CourseKey): Course key
+        
+        Returns:
+            dict: {'allow': bool, 'username': str, ...}
+        """
+        data = cls.run_pipeline(
+            username=username,
+            badge_template_id=badge_template_id,
+            course_key=course_key,
+        )
+        return data
+
+
 @receiver(BADGE_PROGRESS_COMPLETE)
 def handle_badge_completion(sender, username, badge_template_id, origin, **kwargs):  # pylint: disable=unused-argument
     """
@@ -81,11 +118,27 @@ def handle_badge_completion(sender, username, badge_template_id, origin, **kwarg
     logger.debug("BADGES: progress is complete for %s on the %s", username, badge_template_id)
 
     if origin == CredlyBadgeTemplate.ORIGIN:
-        context = kwargs.get('context', {})
-        issue_credly_badges_str = context.get('issue_credly_badges', 'true').lower()       
-        issue_credly_badges = issue_credly_badges_str == 'true'
-
-        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id, issue_credly_badges=issue_credly_badges)
+        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
+        course_passing_status = kwargs.get('course_passing_status')
+        course_key = course_passing_status.course.ccx_course_key
+        
+        try:
+            filter_result = PreBadgeIssuanceFilter.run_filter(
+                username=username,
+                badge_template_id=badge_template_id,
+                course_key=course_key,
+            )
+            
+            allow_issuance = filter_result.get('allow', True)
+            
+            if not allow_issuance:
+                logger.info(f"Badge issuance blocked for {username}")
+                return
+                
+        except OpenEdxFilterException as e:
+            logger.error(f"Filter error: {e}")
+        
+        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
     elif origin == AccredibleGroup.ORIGIN:
         AccredibleBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
 

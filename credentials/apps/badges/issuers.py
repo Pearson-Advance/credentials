@@ -189,7 +189,7 @@ class CredlyBadgeTemplateIssuer(BadgeTemplateIssuer):
         user_credential.state = response.get("data").get("state")
         user_credential.save()
 
-    def award(self, *, username, credential_id, issue_credly_badges=True):
+    def award(self, *, username, credential_id):
         """
         Awards a Credly badge.
 
@@ -201,9 +201,6 @@ class CredlyBadgeTemplateIssuer(BadgeTemplateIssuer):
         """
 
         credly_badge = super().award(username=username, credential_id=credential_id)
-
-        if not issue_credly_badges:
-            return credly_badge
 
         # do not issue new badges if the badge was issued already
         if not credly_badge.propagated:
