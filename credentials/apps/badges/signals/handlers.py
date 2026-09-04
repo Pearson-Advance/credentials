@@ -118,7 +118,6 @@ def handle_badge_completion(sender, username, badge_template_id, origin, **kwarg
     logger.debug("BADGES: progress is complete for %s on the %s", username, badge_template_id)
 
     if origin == CredlyBadgeTemplate.ORIGIN:
-        CredlyBadgeTemplateIssuer().award(username=username, credential_id=badge_template_id)
         course_passing_status = kwargs.get('course_passing_status')
         course_key = course_passing_status.course.ccx_course_key
         
