@@ -438,6 +438,10 @@ openedx-events==10.5.0
     #   -r requirements/test.txt
     #   edx-event-bus-kafka
     #   edx-event-bus-redis
+openedx-filters @ git+https://github.com/Pearson-Advance/openedx-filters.git@pearson/ulmo
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/base.in
 packaging==25.0
     # via
     #   -r requirements/test.txt
