@@ -52,6 +52,7 @@ requests
 segment-analytics-python
 social-auth-app-django
 xss-utils
+openedx-filters
 
 # TODO Install in configuration
 git+https://github.com/Pearson-Advance/event-bus-redis.git@v0.5.0.post1
