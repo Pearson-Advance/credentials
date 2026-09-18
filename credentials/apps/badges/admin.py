@@ -137,6 +137,7 @@ class FulfillmentInline(admin.TabularInline):
     extra = 0
     readonly_fields = [
         "requirement",
+        "course_key",
     ]
 
 
